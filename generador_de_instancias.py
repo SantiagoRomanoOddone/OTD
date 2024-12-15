@@ -5,11 +5,11 @@ def generar_archivo_datos(filename):
     random.seed(1234)
 
     # Cantidad de clientes
-    cantidad_clientes = 50
-    costo_repartidor = 3
-    d_max = 5
-    cantidad_refrigerados = 3
-    cantidad_exclusivos = 3
+    cantidad_clientes = 4
+    costo_repartidor = 10
+    d_max = 20
+    cantidad_refrigerados = 0
+    cantidad_exclusivos = 0
 
     # Generamos los clientes refrigerados con reemplazo
     refrigerados = random.choices(range(1, cantidad_clientes + 1), k=cantidad_refrigerados)
@@ -50,4 +50,4 @@ def generar_archivo_datos(filename):
                 f.write(f"{i} {j} {distancia} {costo}\n")
 
 # Llamamos a la función para generar el archivo
-generar_archivo_datos('instancias/instancia_50_clientes.txt')
+generar_archivo_datos('instancias/instancia_custom_clientes.txt')

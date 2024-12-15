@@ -12,7 +12,8 @@ class InstanciaRecorridoMixto:
         self.refrigerados = []
         self.exclusivos = []
         self.distancias = []        
-        self.costos = []        
+        self.costos = [] 
+        self.nombres = []       
 
     def leer_datos(self,filename):
         # abrimos el archivo de datos
@@ -57,6 +58,8 @@ def cargar_instancia():
     # El 1er parametro es el nombre del archivo de entrada
     # nombre_archivo = sys.argv[1].strip()
     nombre_archivo = 'instancias/instancia_50_clientes.txt'
+    nombre_archivo = 'instancias/instancia_custom_clientes.txt'
+    nombre_archivo = 'instancias/instancia_def.txt'
     # Crea la instancia vacia
     instancia = InstanciaRecorridoMixto()
     # Llena la instancia con los datos del archivo de entrada 
@@ -77,7 +80,6 @@ def agregar_variables(prob, instancia):
     # Acá no se porque 2n, asumo que las profes consideraron a zi como una variable,
     
     # Poner nombre a las variables y llenar coef_funcion_objetivo
-    nombres = []
     coeficientes_funcion_objetivo = []
     tipos = []
     lb = []
@@ -86,12 +88,12 @@ def agregar_variables(prob, instancia):
     # 1. Agregando las variables xij -->
     # Determina si el camion va del cliente i al j
     c=0
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 c = c+1
-                nombres.append(f'x_{i}_{j}')
-                coeficientes_funcion_objetivo.append(instancia.costos[i][j])
+                instancia.nombres.append(f'x_{i}_{j}')
+                coeficientes_funcion_objetivo.append(instancia.costos[i-1][j-1])
                 tipos.append(prob.variables.type.binary)
                 lb.append(0)
                 ub.append(1)
@@ -100,11 +102,11 @@ def agregar_variables(prob, instancia):
     # 2. Var. y_ij -->
     # Determina si el repartidor va del cliente i al j
     c = 0
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 c = c+1
-                nombres.append(f'y_{i}_{j}')
+                instancia.nombres.append(f'y_{i}_{j}')
                 coeficientes_funcion_objetivo.append(instancia.costo_repartidor)
                 tipos.append(prob.variables.type.binary)
                 lb.append(0)
@@ -114,9 +116,9 @@ def agregar_variables(prob, instancia):
     # 3. Var. u_i -->
     # Orden de visita del cliente i en el camino del camion.
     c = 0
-    for i in range(n):
+    for i in range(1, n + 1):
         c = c+1
-        nombres.append(f'u_{i}')
+        instancia.nombres.append(f'u_{i}')
         coeficientes_funcion_objetivo.append(0)
         tipos.append(prob.variables.type.integer)
         lb.append(1 if i != 0 else 0)
@@ -126,9 +128,9 @@ def agregar_variables(prob, instancia):
 
     # 4. Var. z_i -->
     c = 0
-    for i in range(n):
+    for i in range(1, n + 1):
         c = c+1
-        nombres.append(f'z_{i}')
+        instancia.nombres.append(f'z_{i}')
         coeficientes_funcion_objetivo.append(0)
         tipos.append(prob.variables.type.binary)
         lb.append(0)
@@ -136,8 +138,8 @@ def agregar_variables(prob, instancia):
     # Indica si el hay repartidor asignado al cliente i para entregar a j
 
 
-    if len(nombres) != cantVar:
-        print(f'Error en la cantidad de variables, se esperaban {cantVar} y se encontraron {len(nombres)}')
+    if len(instancia.nombres) != cantVar:
+        print(f'Error en la cantidad de variables, se esperaban {cantVar} y se encontraron {len(instancia.nombres)}')
         return
     
     # Agregar las variables
@@ -145,14 +147,14 @@ def agregar_variables(prob, instancia):
                        lb = lb, 
                        ub = ub,
                        types=tipos, 
-                       names=nombres)
+                       names=instancia.nombres)
     
-    return nombres
+    return instancia.nombres
     
 def evitar_subtours(prob, instancia, n):
 
-    for i in range(1, n):  
-        for j in range(1, n):  
+    for i in range(1, n + 1): 
+        for j in range(1, n + 1):  
             if i != j:
                 prob.linear_constraints.add(
                     lin_expr=[cplex.SparsePair(
@@ -165,18 +167,18 @@ def evitar_subtours(prob, instancia, n):
                 )
 
     prob.linear_constraints.add(
-    lin_expr=[cplex.SparsePair(ind=[f'u_0'], val=[1])],
+    lin_expr=[cplex.SparsePair(ind=[f'u_1'], val=[1])],
     senses=['E'],
     rhs=[0],
-    names=['fix_u0']
+    names=['fix_u1']
     )
 
 def cobertura_total(prob, instancia, n):
-    for i in range(n):
+    for i in range(1, n + 1):
         prob.linear_constraints.add(
             lin_expr=[cplex.SparsePair(
-                ind = [f'x_{j}_{i}' for j in range(n) if i != j] +
-                        [f'y_{j}_{i}' for j in range(n) if i != j],
+                ind = [f'x_{j}_{i}' for j in range(1, n + 1) if i != j] +
+                        [f'y_{j}_{i}' for j in range(1, n + 1) if i != j],
                 val = [1] * (2*(n-1))
             )],
             senses=['E'],
@@ -185,13 +187,13 @@ def cobertura_total(prob, instancia, n):
         )
 
 def distancia_maxima(prob, instancia, n):
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 prob.linear_constraints.add(
                     lin_expr=[cplex.SparsePair(
                         ind=[f'y_{i}_{j}'],
-                        val=[instancia.distancias[i][j]]
+                        val=[instancia.distancias[i-1][j-1]]
                     )],
                     senses=['L'],
                     rhs=[instancia.d_max],
@@ -199,11 +201,11 @@ def distancia_maxima(prob, instancia, n):
                 )
 
 def continuidad_camion(prob, instancia, n):
-    for i in range(n):
+    for i in range(1, n + 1):
         # Entra a i
-        entrada = [f'x_{j}_{i}' for j in range(n) if i != j]
+        entrada = [f'x_{j}_{i}' for j in range(1, n + 1) if i != j]
         # Sale de i
-        salida = [f'x_{i}_{j}' for j in range(n) if i != j]
+        salida = [f'x_{i}_{j}' for j in range(1, n + 1) if i != j]
 
         # Restricción
         prob.linear_constraints.add(
@@ -217,8 +219,8 @@ def continuidad_camion(prob, instancia, n):
         )
 
 def restriccion_refrigerados(prob, instancia, n):
-    for i in range(n):
-        refrigerados = [j for j in range(n) if j in instancia.refrigerados and i != j]
+    for i in range(1, n + 1):
+        refrigerados = [j for j in range(1, n + 1) if j in instancia.refrigerados and i != j]
         if refrigerados:
             prob.linear_constraints.add(
                 lin_expr=[cplex.SparsePair(
@@ -232,10 +234,10 @@ def restriccion_refrigerados(prob, instancia, n):
 
 def activacion_z(prob, instancia, n):
     # Primer constraint:  Si todos los y_ij son 0, entonces z_i = 0
-    for i in range(n):
+    for i in range(1, n + 1):
         prob.linear_constraints.add(
             lin_expr=[cplex.SparsePair(
-                ind=[f'y_{i}_{j}' for j in range(n) if i != j] + [f'z_{i}'],
+                ind=[f'y_{i}_{j}' for j in range(1, n + 1) if i != j] + [f'z_{i}'],
                 val=[1] * (n - 1) + [-1]
             )],
             senses=['G'],  
@@ -244,8 +246,8 @@ def activacion_z(prob, instancia, n):
         )
     
     # Segundo constraint:  y_i_j <= z_i para todos los 
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 prob.linear_constraints.add(
                     lin_expr=[cplex.SparsePair(
@@ -259,37 +261,37 @@ def activacion_z(prob, instancia, n):
 
 def no_repartidor_en_deposito(prob, instancia, n):
     '''
-    y_0_j y y_i_0 deberían ser siempre 0
+    y_1_j y y_i_1 deberían ser siempre 0
     '''
-    for j in range(n):
-        # Restricción para y_0_j = 0
-        if j != 0:
+    for j in range(1, n + 1):
+        # Restricción para y_1_j = 0
+        if j != 1:
             prob.linear_constraints.add(
                 lin_expr=[cplex.SparsePair(
-                    ind=[f'y_{0}_{j}'],
+                    ind=[f'y_{1}_{j}'],
                     val=[1]
                 )],
                 senses=['E'], 
                 rhs=[0],
-                names=[f'no_repartidor_en_deposito_{0}_{j}'] 
+                names=[f'no_repartidor_en_deposito_{1}_{j}'] 
             )
 
             # Restricción para y_j_0 = 0    
             prob.linear_constraints.add(
                 lin_expr=[cplex.SparsePair(
-                    ind=[f'y_{j}_{0}'],
+                    ind=[f'y_{j}_{1}'],
                     val=[1]
                 )],
                 senses=['E'],
                 rhs=[0],
-                names=[f'no_repartidor_en_deposito_{j}_{0}'] 
+                names=[f'no_repartidor_en_deposito_{j}_{1}'] 
             )
 
 def activacion_z_x(prob, instancia, n):
-    for i in range(n):
+    for i in range(1, n + 1):
         prob.linear_constraints.add(
             lin_expr=[cplex.SparsePair(
-                ind=[f'z_{i}'] + [f'x_{j}_{i}' for j in range(n) if i != j],
+                ind=[f'z_{i}'] + [f'x_{j}_{i}' for j in range(1, n + 1) if i != j],
                 val=[-1] + [1] * (n - 1)
         )],
         senses=['G'],
@@ -392,27 +394,27 @@ def mostrar_solucion(prob,instancia, nombres):
     u_values = {}
 
     # Extracción x
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 var_name = f'x_{i}_{j}'
                 x_values[(i, j)] = solution_values[nombres.index(var_name)]
 
     # Extracción y
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j:
                 var_name = f'y_{i}_{j}'
                 y_values[(i, j)] = solution_values[nombres.index(var_name)]
 
     # Extracción u
-    for i in range(n):
+    for i in range(1, n + 1):
         var_name = f'u_{i}'
         u_values[i] = solution_values[nombres.index(var_name)]
     
     # Extracción z
     z_values = {}
-    for i in range(n):
+    for i in range(1, n + 1):
         var_name = f'z_{i}'
         z_values[i] = solution_values[nombres.index(var_name)]
 
@@ -422,11 +424,11 @@ def mostrar_solucion(prob,instancia, nombres):
     vars_y_con_valor_positivo = {}
     vars_u_con_valor_positivo = {}
     vars_z_con_valor_positivo = {}
-    for i in range(n):
-        for j in range(n):
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
             if i != j and x_values[(i, j)] > TOLERANCE:
                 vars_x_con_valor_positivo[(i, j)] = x_values[(i, j)]
-        for j in range(n):
+        for j in range(1, n + 1):
             if i != j and y_values[(i, j)] > TOLERANCE:
                 vars_y_con_valor_positivo[(i, j)] = y_values[(i, j)]
         if u_values[i] > TOLERANCE:
